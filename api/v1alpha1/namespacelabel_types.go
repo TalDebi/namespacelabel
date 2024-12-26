@@ -20,28 +20,26 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-// EDIT THIS FILE!  THIS IS SCAFFOLDING FOR YOU TO OWN!
-// NOTE: json tags are required.  Any new fields you add must have json tags for the fields to be serialized.
-
 // NamespaceLabelSpec defines the desired state of NamespaceLabel.
 type NamespaceLabelSpec struct {
-	// INSERT ADDITIONAL SPEC FIELDS - desired state of cluster
-	// Important: Run "make" to regenerate code after modifying this file
-
-	// Foo is an example field of NamespaceLabel. Edit namespacelabel_types.go to remove/update
-	Foo string `json:"foo,omitempty"`
+	// Labels to be added to the Namespace
+	Labels map[string]string `json:"labels,omitempty" yaml:"labels"`
 }
 
 // NamespaceLabelStatus defines the observed state of NamespaceLabel.
 type NamespaceLabelStatus struct {
-	// INSERT ADDITIONAL STATUS FIELD - define observed state of cluster
-	// Important: Run "make" to regenerate code after modifying this file
+	// AppliedLabels shows the labels that have been successfully applied
+	AppliedLabels map[string]string `json:"appliedLabels,omitempty" yaml:"appliedLabels"`
+	// Conditions represents the latest available observations of an object's state
+	Conditions []metav1.Condition `json:"conditions,omitempty"`
 }
 
+// NamespaceLabel is the Schema for the namespacelabels API.
 // +kubebuilder:object:root=true
 // +kubebuilder:subresource:status
-
-// NamespaceLabel is the Schema for the namespacelabels API.
+// +kubebuilder:resource:scope=Namespaced,shortName=nsl
+// +kubebuilder:printcolumn:name="Labels",type=string,JSONPath=".spec.labels",description="Labels applied to the Namespace", priority=10
+// +kubebuilder:object:generate=true
 type NamespaceLabel struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
@@ -50,9 +48,9 @@ type NamespaceLabel struct {
 	Status NamespaceLabelStatus `json:"status,omitempty"`
 }
 
-// +kubebuilder:object:root=true
-
 // NamespaceLabelList contains a list of NamespaceLabel.
+// +kubebuilder:object:root=true
+// +kubebuilder:object:generate=true
 type NamespaceLabelList struct {
 	metav1.TypeMeta `json:",inline"`
 	metav1.ListMeta `json:"metadata,omitempty"`
