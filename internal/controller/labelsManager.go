@@ -2,17 +2,12 @@ package controller
 
 import (
 	"context"
-	"fmt"
-	"strings"
-
 	danaiov1alpha1 "github.com/TalDebi/namespacelabel/api/v1alpha1"
+	"github.com/TalDebi/namespacelabel/internal"
 	corev1 "k8s.io/api/core/v1"
 )
 
-// Management label prefix
-const managementLabelPrefix = "kubernetes.io"
-
-// Reconcile the namespace labels based on NamespaceLabel spec
+// reconcileNamespaceLabels reconciles the namespace labels based on NamespaceLabel spec
 func (r *NamespaceLabelReconciler) reconcileNamespaceLabels(
 	ctx context.Context, namespaceLabel *danaiov1alpha1.NamespaceLabel, ns *corev1.Namespace) error {
 
@@ -30,35 +25,42 @@ func (r *NamespaceLabelReconciler) reconcileNamespaceLabels(
 	return nil
 }
 
-// determines labels to add, remove or update
+// determineLabelChanges determines labels to add, remove or update
 func determineLabelChanges(namespaceLabel *danaiov1alpha1.NamespaceLabel, ns *corev1.Namespace) (map[string]string, map[string]struct{}, error) {
 	labelsToAdd := make(map[string]string)
 	labelsToRemove := make(map[string]struct{})
 
-	// Collect labels to add or update
-	for key, value := range namespaceLabel.Spec.Labels {
-		if isManagementLabel(key) {
-			return nil, nil, fmt.Errorf("cannot add protected or management label '%s'", key)
-		}
+	labelsToAdd = collectLabelsToAddOrUpdate(namespaceLabel)
 
+	labelsToRemove = collectLabelsToRemove(ns.Labels, labelsToAdd)
+
+	return labelsToAdd, labelsToRemove, nil
+}
+
+// collectLabelsToAddOrUpdate collects the labels from the namespaceLabel and returns a map of labels to add or update.
+func collectLabelsToAddOrUpdate(namespaceLabel *danaiov1alpha1.NamespaceLabel) map[string]string {
+	labelsToAdd := make(map[string]string)
+
+	for key, value := range namespaceLabel.Spec.Labels {
 		labelsToAdd[key] = value
 	}
 
-	// Collect labels to remove
-	if ns.Labels != nil {
-		for key := range ns.Labels {
-			if _, exists := labelsToAdd[key]; !exists && !isManagementLabel(key) {
+	return labelsToAdd
+}
+
+// collectLabelsToRemove identifies labels to be removed from the namespace
+func collectLabelsToRemove(nsLabels map[string]string, labelsToAdd map[string]string) map[string]struct{} {
+	labelsToRemove := make(map[string]struct{})
+
+	if nsLabels != nil {
+		for key := range nsLabels {
+			if _, exists := labelsToAdd[key]; !exists && !internal.IsManagementLabel(key) {
 				labelsToRemove[key] = struct{}{}
 			}
 		}
 	}
 
-	return labelsToAdd, labelsToRemove, nil
-}
-
-// check if label is a management label
-func isManagementLabel(label string) bool {
-	return strings.HasPrefix(label, managementLabelPrefix)
+	return labelsToRemove
 }
 
 // applyLabelsChanges removes and applies labels to the Namespace object

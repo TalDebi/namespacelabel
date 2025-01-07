@@ -4,9 +4,9 @@ kind: CustomResourceDefinition
 metadata:
   annotations:
     controller-gen.kubebuilder.io/version: v0.16.4
-  name: namespacelabels.dana.io.namespacelabel.com
+  name: namespacelabels.dana.dana.io
 spec:
-  group: dana.io.namespacelabel.com
+  group: dana.dana.io
   names:
     kind: NamespaceLabel
     listKind: NamespaceLabelList

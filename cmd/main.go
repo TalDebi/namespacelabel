@@ -1,5 +1,5 @@
 /*
-Copyright 2024.
+Copyright 2025.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -19,6 +19,7 @@ package main
 import (
 	"crypto/tls"
 	"flag"
+	"github.com/TalDebi/namespacelabel/internal"
 	"os"
 
 	// Import all Kubernetes client auth plugins (e.g. Azure, GCP, OIDC, etc.)
@@ -35,8 +36,9 @@ import (
 	metricsserver "sigs.k8s.io/controller-runtime/pkg/metrics/server"
 	"sigs.k8s.io/controller-runtime/pkg/webhook"
 
-	danaiov1alpha1 "github.com/TalDebi/namespacelabel/api/v1alpha1"
+	danav1alpha1 "github.com/TalDebi/namespacelabel/api/v1alpha1"
 	"github.com/TalDebi/namespacelabel/internal/controller"
+	webhookdanav1alpha1 "github.com/TalDebi/namespacelabel/internal/webhook/v1alpha1"
 	// +kubebuilder:scaffold:imports
 )
 
@@ -48,7 +50,7 @@ var (
 func init() {
 	utilruntime.Must(clientgoscheme.AddToScheme(scheme))
 
-	utilruntime.Must(danaiov1alpha1.AddToScheme(scheme))
+	utilruntime.Must(danav1alpha1.AddToScheme(scheme))
 	// +kubebuilder:scaffold:scheme
 }
 
@@ -69,6 +71,7 @@ func main() {
 		"If set, the metrics endpoint is served securely via HTTPS. Use --metrics-secure=false to use HTTP instead.")
 	flag.BoolVar(&enableHTTP2, "enable-http2", false,
 		"If set, HTTP/2 will be enabled for the metrics and webhook servers")
+	flag.StringVar(&internal.ManagementLabelPrefix, "management-label-prefix", "kubernetes.io", "Management label prefix")
 	opts := zap.Options{
 		Development: true,
 	}
@@ -94,6 +97,7 @@ func main() {
 
 	webhookServer := webhook.NewServer(webhook.Options{
 		TLSOpts: tlsOpts,
+		CertDir: "./tmp/k8s-webhook-server/serving-certs",
 	})
 
 	// Metrics endpoint is enabled in 'config/default/kustomization.yaml'. The Metrics options configure the server.
@@ -124,7 +128,7 @@ func main() {
 		WebhookServer:          webhookServer,
 		HealthProbeBindAddress: probeAddr,
 		LeaderElection:         enableLeaderElection,
-		LeaderElectionID:       "6100d1c1.namespacelabel.com",
+		LeaderElectionID:       "6100d1c1.dana.io",
 		// LeaderElectionReleaseOnCancel defines if the leader should step down voluntarily
 		// when the Manager ends. This requires the binary to immediately end when the
 		// Manager is stopped, otherwise, this setting is unsafe. Setting this significantly
@@ -148,6 +152,13 @@ func main() {
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "NamespaceLabel")
 		os.Exit(1)
+	}
+	// nolint:goconst
+	if os.Getenv("ENABLE_WEBHOOKS") != "false" {
+		if err = webhookdanav1alpha1.SetupNamespaceLabelWebhookWithManager(mgr); err != nil {
+			setupLog.Error(err, "unable to create webhook", "webhook", "NamespaceLabel")
+			os.Exit(1)
+		}
 	}
 	// +kubebuilder:scaffold:builder
 

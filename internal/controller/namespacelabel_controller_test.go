@@ -1,5 +1,5 @@
 /*
-Copyright 2024.
+Copyright 2025.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -27,7 +27,7 @@ import (
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
-	danaiov1alpha1 "github.com/TalDebi/namespacelabel/api/v1alpha1"
+	danav1alpha1 "github.com/TalDebi/namespacelabel/api/v1alpha1"
 )
 
 var _ = Describe("NamespaceLabel Controller", func() {
@@ -40,13 +40,13 @@ var _ = Describe("NamespaceLabel Controller", func() {
 			Name:      resourceName,
 			Namespace: "default", // TODO(user):Modify as needed
 		}
-		namespacelabel := &danaiov1alpha1.NamespaceLabel{}
+		namespacelabel := &danav1alpha1.NamespaceLabel{}
 
 		BeforeEach(func() {
 			By("creating the custom resource for the Kind NamespaceLabel")
 			err := k8sClient.Get(ctx, typeNamespacedName, namespacelabel)
 			if err != nil && errors.IsNotFound(err) {
-				resource := &danaiov1alpha1.NamespaceLabel{
+				resource := &danav1alpha1.NamespaceLabel{
 					ObjectMeta: metav1.ObjectMeta{
 						Name:      resourceName,
 						Namespace: "default",
@@ -59,7 +59,7 @@ var _ = Describe("NamespaceLabel Controller", func() {
 
 		AfterEach(func() {
 			// TODO(user): Cleanup logic after each test, like removing the resource instance.
-			resource := &danaiov1alpha1.NamespaceLabel{}
+			resource := &danav1alpha1.NamespaceLabel{}
 			err := k8sClient.Get(ctx, typeNamespacedName, resource)
 			Expect(err).NotTo(HaveOccurred())
 

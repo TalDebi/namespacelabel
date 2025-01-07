@@ -8,7 +8,7 @@ metadata:
   name: namespacelabel-viewer-role
 rules:
 - apiGroups:
-  - dana.io.namespacelabel.com
+  - dana.dana.io
   resources:
   - namespacelabels
   verbs:
@@ -16,7 +16,7 @@ rules:
   - list
   - watch
 - apiGroups:
-  - dana.io.namespacelabel.com
+  - dana.dana.io
   resources:
   - namespacelabels/status
   verbs:

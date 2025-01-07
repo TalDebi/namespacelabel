@@ -2,7 +2,7 @@
 # This file is used to track the info used to scaffold your project
 # and allow the plugins properly work.
 # More info: https://book.kubebuilder.io/reference/project-config.html
-domain: namespacelabel.com
+domain: dana.io
 layout:
 - go.kubebuilder.io/v4
 projectName: nsl-operator-tal
@@ -12,9 +12,12 @@ resources:
     crdVersion: v1
     namespaced: true
   controller: true
-  domain: namespacelabel.com
-  group: dana.io
+  domain: dana.io
+  group: dana
   kind: NamespaceLabel
   path: github.com/TalDebi/namespacelabel/api/v1alpha1
   version: v1alpha1
+  webhooks:
+    validation: true
+    webhookVersion: v1
 version: "3"

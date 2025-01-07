@@ -1,11 +1,11 @@
-apiVersion: dana.io.namespacelabel.com/v1alpha1
+apiVersion: dana.dana.io/v1alpha1
 kind: NamespaceLabel
 metadata:
   labels:
     app.kubernetes.io/name: nsl-operator-tal
     app.kubernetes.io/managed-by: kustomize
-  name: namespacelabel-sample1
-  namespace: default
+  name: namespacelabel-sample5
+  namespace: tal
 spec:
   labels:
-    "3": "3"
+    "kub76": "121"

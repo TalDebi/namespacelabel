@@ -22,11 +22,14 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 
+	"github.com/TalDebi/namespacelabel/internal"
 	"k8s.io/apimachinery/pkg/runtime"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 )
+
+var finalizerName = internal.FinalizerName
 
 // NamespaceLabelReconciler reconciles a NamespaceLabel object
 type NamespaceLabelReconciler struct {
@@ -35,24 +38,24 @@ type NamespaceLabelReconciler struct {
 	Log logr.Logger
 }
 
-const (
-	finalizerName = "namespacelabel.finalizers.dana.io/finalizer"
-)
-
-// +kubebuilder:rbac:groups=dana.io.namespacelabel.com,resources=namespacelabels,verbs=get;list;watch;create;update;patch;delete
-// +kubebuilder:rbac:groups=dana.io.namespacelabel.com,resources=namespacelabels/status,verbs=get;update;patch
-// +kubebuilder:rbac:groups=dana.io.namespacelabel.com,resources=namespacelabels/finalizers,verbs=update
+// +kubebuilder:rbac:groups=dana.dana.io,resources=namespacelabels,verbs=get;list;watch;create;update;patch;delete
+// +kubebuilder:rbac:groups=dana.dana.io,resources=namespacelabels/status,verbs=get;update;patch
+// +kubebuilder:rbac:groups=dana.dana.io,resources=namespacelabels/finalizers,verbs=update
+// +kubebuilder:rbac:groups="",resources=namespaces,verbs=list;watch;get;update
 
 func (r *NamespaceLabelReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
 	_ = context.Background()
 	logger := log.FromContext(ctx)
 
-	logger.Info("Starting reconciliation for NamespaceLabel", "Namespace", req.Namespace, "Name", req.Name)
+	logger.Info("Starting reconciliation for NamespaceLabel", "Namespace", req.Namespace, "Name", internal.ManagementLabelPrefix)
 
 	// Fetch the NamespaceLabel instance
 	namespaceLabel, err := r.fetchNamespaceLabel(ctx, req)
 	if err != nil {
 		return ctrl.Result{}, err
+	}
+	if namespaceLabel == nil {
+		return ctrl.Result{}, nil
 	}
 
 	logger.Info("Fetched NamespaceLabel", "NamespaceLabel", namespaceLabel)
@@ -62,10 +65,13 @@ func (r *NamespaceLabelReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 	if err != nil {
 		return ctrl.Result{}, err
 	}
+	if ns == nil {
+		return ctrl.Result{}, nil
+	}
 
 	logger.Info("Fetched Namespace", "NamespaceLabel", ns)
 
-	// Handle deletion
+	// Handle finalizer
 	if namespaceLabel.ObjectMeta.DeletionTimestamp.IsZero() {
 		if !controllerutil.ContainsFinalizer(namespaceLabel, finalizerName) {
 			controllerutil.AddFinalizer(namespaceLabel, finalizerName)
@@ -75,16 +81,12 @@ func (r *NamespaceLabelReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 		}
 	} else {
 		if controllerutil.ContainsFinalizer(namespaceLabel, finalizerName) {
-			r.handleDeletion(ctx, namespaceLabel, ns)
+			if err := r.handleDeletion(ctx, namespaceLabel, ns); err != nil {
+				return ctrl.Result{}, err
+			}
 		}
 
 		return ctrl.Result{}, nil
-	}
-
-	// Ensure only one NamespaceLabel per namespace
-	if err := r.ensureSingleNamespaceLabel(ctx, req, namespaceLabel); err != nil {
-		r.updateConditionsStatus(ctx, namespaceLabel, "NamespaceLabelsConflict", metav1.ConditionFalse, "Conflict", err.Error())
-		return ctrl.Result{}, err
 	}
 
 	logger.Info("Creating nsl")
