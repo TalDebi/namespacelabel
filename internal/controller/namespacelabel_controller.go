@@ -47,7 +47,7 @@ func (r *NamespaceLabelReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 	_ = context.Background()
 	logger := log.FromContext(ctx)
 
-	logger.Info("Starting reconciliation for NamespaceLabel", "Namespace", req.Namespace, "Name", internal.ManagementLabelPrefix)
+	logger.Info("Starting reconciliation for NamespaceLabel", "Namespace", req.Namespace, "Name", req.Name)
 
 	// Fetch the NamespaceLabel instance
 	namespaceLabel, err := r.fetchNamespaceLabel(ctx, req)
