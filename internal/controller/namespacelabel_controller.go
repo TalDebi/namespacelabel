@@ -18,46 +18,87 @@ package controller
 
 import (
 	"context"
+	"github.com/go-logr/logr"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 
+	"github.com/TalDebi/namespacelabel/internal"
 	"k8s.io/apimachinery/pkg/runtime"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/log"
-
-	danaiov1alpha1 "github.com/TalDebi/namespacelabel/api/v1alpha1"
 )
+
+var finalizerName = internal.FinalizerName
 
 // NamespaceLabelReconciler reconciles a NamespaceLabel object
 type NamespaceLabelReconciler struct {
-	client.Client
 	Scheme *runtime.Scheme
+	client.Client
+	Log logr.Logger
 }
 
-// +kubebuilder:rbac:groups=dana.io.namespacelabel.com,resources=namespacelabels,verbs=get;list;watch;create;update;patch;delete
-// +kubebuilder:rbac:groups=dana.io.namespacelabel.com,resources=namespacelabels/status,verbs=get;update;patch
-// +kubebuilder:rbac:groups=dana.io.namespacelabel.com,resources=namespacelabels/finalizers,verbs=update
+// +kubebuilder:rbac:groups=dana.dana.io,resources=namespacelabels,verbs=get;list;watch;create;update;patch;delete
+// +kubebuilder:rbac:groups=dana.dana.io,resources=namespacelabels/status,verbs=get;update;patch
+// +kubebuilder:rbac:groups=dana.dana.io,resources=namespacelabels/finalizers,verbs=update
+// +kubebuilder:rbac:groups="",resources=namespaces,verbs=list;watch;get;update
 
-// Reconcile is part of the main kubernetes reconciliation loop which aims to
-// move the current state of the cluster closer to the desired state.
-// TODO(user): Modify the Reconcile function to compare the state specified by
-// the NamespaceLabel object against the actual cluster state, and then
-// perform operations to make the cluster state reflect the state specified by
-// the user.
-//
-// For more details, check Reconcile and its Result here:
-// - https://pkg.go.dev/sigs.k8s.io/controller-runtime@v0.19.1/pkg/reconcile
 func (r *NamespaceLabelReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
-	_ = log.FromContext(ctx)
+	_ = context.Background()
+	logger := log.FromContext(ctx)
 
-	// TODO(user): your logic here
+	logger.Info("Starting reconciliation for NamespaceLabel", "Namespace", req.Namespace, "Name", req.Name)
+
+	// Fetch the NamespaceLabel instance
+	namespaceLabel, err := r.fetchNamespaceLabel(ctx, req)
+	if err != nil {
+		return ctrl.Result{}, err
+	}
+	if namespaceLabel == nil {
+		return ctrl.Result{}, nil
+	}
+
+	logger.Info("Fetched NamespaceLabel", "NamespaceLabel", namespaceLabel)
+
+	// Fetch the Namespace instance
+	ns, err := r.fetchNamespace(ctx, req)
+	if err != nil {
+		return ctrl.Result{}, err
+	}
+	if ns == nil {
+		return ctrl.Result{}, nil
+	}
+
+	logger.Info("Fetched Namespace", "NamespaceLabel", ns)
+
+	// Handle finalizer
+	if namespaceLabel.ObjectMeta.DeletionTimestamp.IsZero() {
+		if !controllerutil.ContainsFinalizer(namespaceLabel, finalizerName) {
+			controllerutil.AddFinalizer(namespaceLabel, finalizerName)
+			if err := r.Update(ctx, namespaceLabel); err != nil {
+				return ctrl.Result{}, err
+			}
+		}
+	} else {
+		if controllerutil.ContainsFinalizer(namespaceLabel, finalizerName) {
+			if err := r.handleDeletion(ctx, namespaceLabel, ns); err != nil {
+				return ctrl.Result{}, err
+			}
+		}
+
+		return ctrl.Result{}, nil
+	}
+
+	logger.Info("Creating nsl")
+
+	// Reconcile the namespace labels
+	if err := r.reconcileNamespaceLabels(ctx, namespaceLabel, ns); err != nil {
+		r.updateConditionsStatus(ctx, namespaceLabel, "UpdateLabelsFailed", metav1.ConditionFalse, "UpdateError", err.Error())
+		return ctrl.Result{}, err
+	}
+
+	r.updateConditionsStatus(ctx, namespaceLabel, "LabelsApplied", metav1.ConditionTrue, "Success", "Namespace labels have been successfully updated")
+	logger.Info("nsl Created")
 
 	return ctrl.Result{}, nil
-}
-
-// SetupWithManager sets up the controller with the Manager.
-func (r *NamespaceLabelReconciler) SetupWithManager(mgr ctrl.Manager) error {
-	return ctrl.NewControllerManagedBy(mgr).
-		For(&danaiov1alpha1.NamespaceLabel{}).
-		Named("namespacelabel").
-		Complete(r)
 }
