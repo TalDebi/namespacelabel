@@ -118,8 +118,10 @@ var _ = BeforeSuite(func() {
 	})
 	Expect(err).NotTo(HaveOccurred())
 
-	err = SetupNamespaceLabelWebhookWithManager(mgr)
-	Expect(err).NotTo(HaveOccurred())
+	hookServer := mgr.GetWebhookServer()
+	hookServer.Register("/validate-dana-dana-io-v1alpha1-namespacelabel", &webhook.Admission{
+		Handler: &NamespaceLabelCustomValidator{Client: mgr.GetClient()},
+	})
 
 	// +kubebuilder:scaffold:webhook
 

@@ -155,10 +155,10 @@ func main() {
 	}
 	// nolint:goconst
 	if os.Getenv("ENABLE_WEBHOOKS") != "false" {
-		if err = webhookdanav1alpha1.SetupNamespaceLabelWebhookWithManager(mgr); err != nil {
-			setupLog.Error(err, "unable to create webhook", "webhook", "NamespaceLabel")
-			os.Exit(1)
-		}
+		setupLog.Info("setting up webhook server")
+		hookServer := mgr.GetWebhookServer()
+		hookServer.Register("/validate-dana-dana-io-v1alpha1-namespacelabel", &webhook.Admission{Handler: &webhookdanav1alpha1.NamespaceLabelCustomValidator{
+			Client: mgr.GetClient()}})
 	}
 	// +kubebuilder:scaffold:builder
 

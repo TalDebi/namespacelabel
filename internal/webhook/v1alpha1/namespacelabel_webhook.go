@@ -18,27 +18,20 @@ package v1alpha1
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"github.com/TalDebi/namespacelabel/internal"
+	admissionv1 "k8s.io/api/admission/v1"
+	"net/http"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 
-	"k8s.io/apimachinery/pkg/runtime"
-	ctrl "sigs.k8s.io/controller-runtime"
-	"sigs.k8s.io/controller-runtime/pkg/webhook"
 	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
 
 	danav1alpha1 "github.com/TalDebi/namespacelabel/api/v1alpha1"
 )
 
 // nolint:unused
-
-// SetupNamespaceLabelWebhookWithManager registers the webhook for NamespaceLabel in the manager.
-func SetupNamespaceLabelWebhookWithManager(mgr ctrl.Manager) error {
-	return ctrl.NewWebhookManagedBy(mgr).For(&danav1alpha1.NamespaceLabel{}).
-		WithValidator(&NamespaceLabelCustomValidator{Client: mgr.GetClient()}).
-		Complete()
-}
 
 // NOTE: The 'path' attribute must follow a specific pattern and should not be modified directly here.
 // Modifying the path for an invalid path can cause API server errors; failing to locate the webhook.
@@ -53,65 +46,31 @@ type NamespaceLabelCustomValidator struct {
 	Client client.Client
 }
 
-var _ webhook.CustomValidator = &NamespaceLabelCustomValidator{}
-
-// ValidateCreate implements webhook.CustomValidator so a webhook will be registered for the type NamespaceLabel.
-func (v *NamespaceLabelCustomValidator) ValidateCreate(ctx context.Context, obj runtime.Object) (admission.Warnings, error) {
-	namespacelabel, err := fetchNamespaceLabel(ctx, obj)
-	if err != nil {
-		return nil, err
-	}
-
-	// Check if there is already a NamespaceLabel in the namespace.
-	existingLabels, err := v.fetchNamespaceLabels(ctx, namespacelabel.Namespace)
-	if err != nil {
-		return nil, fmt.Errorf("could not validate NamespaceLabel: %v", err)
-	}
-
-	if len(existingLabels.Items) > 0 {
-		return nil, fmt.Errorf("namespace '%s' already has %d NamespaceLabel(s). Only one is allowed per namespace", namespacelabel.Namespace, len(existingLabels.Items))
-	}
-
-	// Check if applied labels contain any management labels.
-	if err := v.validateLabels(ctx, namespacelabel); err != nil {
-		return nil, err
-	}
-
-	return nil, nil
-}
-
-// ValidateUpdate implements webhook.CustomValidator so a webhook will be registered for the type NamespaceLabel.
-func (v *NamespaceLabelCustomValidator) ValidateUpdate(ctx context.Context, oldObj, newObj runtime.Object) (admission.Warnings, error) {
-	namespacelabel, err := fetchNamespaceLabel(ctx, newObj)
-	if err != nil {
-		return nil, err
-	}
-
-	// Check if applied labels contain any management labels.
-	if err := v.validateLabels(ctx, namespacelabel); err != nil {
-		return nil, err
-	}
-
-	return nil, nil
-}
-
-// ValidateDelete implements webhook.CustomValidator so a webhook will be registered for the type NamespaceLabel.
-func (v *NamespaceLabelCustomValidator) ValidateDelete(ctx context.Context, obj runtime.Object) (admission.Warnings, error) {
-	return nil, nil
-}
-
-// fetchNamespaceLabel fetches NamespaceLabel
-func fetchNamespaceLabel(ctx context.Context, obj runtime.Object) (*danav1alpha1.NamespaceLabel, error) {
+func (v *NamespaceLabelCustomValidator) Handle(ctx context.Context, req admission.Request) admission.Response {
 	logger := log.FromContext(ctx)
+	var namespacelabel danav1alpha1.NamespaceLabel
 
-	namespacelabel, ok := obj.(*danav1alpha1.NamespaceLabel)
-	if !ok {
-		return nil, fmt.Errorf("expected a NamespaceLabel object but got %T", obj)
+	if err := json.Unmarshal(req.Object.Raw, &namespacelabel); err != nil {
+		logger.Error(err, "Could not unmarshal raw object")
+		return admission.Errored(http.StatusBadRequest, err)
 	}
 
-	logger.Info("fetched NamespaceLabel", "name", namespacelabel.GetName())
+	if req.Operation == admissionv1.Create {
+		existingLabels, err := v.fetchNamespaceLabels(ctx, namespacelabel.Namespace)
+		if err != nil {
+			return admission.Errored(http.StatusInternalServerError, fmt.Errorf("could not validate NamespaceLabel: %w", err))
+		}
 
-	return namespacelabel, nil
+		if len(existingLabels.Items) > 0 {
+			return admission.Denied(fmt.Sprintf("namespace '%s' already has %d NamespaceLabel(s). Only one is allowed per namespace", namespacelabel.Namespace, len(existingLabels.Items)))
+		}
+	}
+
+	if err := v.validateLabels(ctx, &namespacelabel); err != nil {
+		return admission.Errored(http.StatusBadRequest, err)
+	}
+
+	return admission.Allowed("NamespaceLabel validated successfully")
 }
 
 // fetchNamespaceLabels retrieves NamespaceLabel resources in the given namespace.
