@@ -1,6 +1,7 @@
 package internal
 
+const FinalizerName = "namespacelabel.finalizers.dana.io/finalizer"
+
 var (
-	FinalizerName         = "namespacelabel.finalizers.dana.io/finalizer"
-	ManagementLabelPrefix string
+	ManagementLabelPrefixes []string
 )

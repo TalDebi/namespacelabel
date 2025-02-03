@@ -20,6 +20,7 @@ import (
 	"crypto/tls"
 	"flag"
 	"github.com/TalDebi/namespacelabel/internal"
+	"github.com/spf13/pflag"
 	"os"
 
 	// Import all Kubernetes client auth plugins (e.g. Azure, GCP, OIDC, etc.)
@@ -71,7 +72,7 @@ func main() {
 		"If set, the metrics endpoint is served securely via HTTPS. Use --metrics-secure=false to use HTTP instead.")
 	flag.BoolVar(&enableHTTP2, "enable-http2", false,
 		"If set, HTTP/2 will be enabled for the metrics and webhook servers")
-	flag.StringVar(&internal.ManagementLabelPrefix, "management-label-prefix", "kubernetes.io", "Management label prefix")
+	pflag.StringSliceVar(&internal.ManagementLabelPrefixes, "management-label-prefixes", []string{"kubernetes.io"}, "Management label prefixes")
 	opts := zap.Options{
 		Development: true,
 	}
@@ -97,7 +98,6 @@ func main() {
 
 	webhookServer := webhook.NewServer(webhook.Options{
 		TLSOpts: tlsOpts,
-		CertDir: "./tmp/k8s-webhook-server/serving-certs",
 	})
 
 	// Metrics endpoint is enabled in 'config/default/kustomization.yaml'. The Metrics options configure the server.
@@ -153,7 +153,6 @@ func main() {
 		setupLog.Error(err, "unable to create controller", "controller", "NamespaceLabel")
 		os.Exit(1)
 	}
-	// nolint:goconst
 	if os.Getenv("ENABLE_WEBHOOKS") != "false" {
 		if err = webhookdanav1alpha1.SetupNamespaceLabelWebhookWithManager(mgr); err != nil {
 			setupLog.Error(err, "unable to create webhook", "webhook", "NamespaceLabel")

@@ -3,36 +3,43 @@ package controller
 import (
 	"context"
 	danaiov1alpha1 "github.com/TalDebi/namespacelabel/api/v1alpha1"
+	"github.com/TalDebi/namespacelabel/internal"
 	corev1 "k8s.io/api/core/v1"
-	ctrl "sigs.k8s.io/controller-runtime"
-	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
+	"sigs.k8s.io/controller-runtime/pkg/log"
 )
 
-// fetchNamespaceLabel fetches the current NamespaceLabel details
-func (r *NamespaceLabelReconciler) fetchNamespaceLabel(ctx context.Context, req ctrl.Request) (*danaiov1alpha1.NamespaceLabel, error) {
-	namespaceLabel := &danaiov1alpha1.NamespaceLabel{}
-	if err := r.Get(ctx, req.NamespacedName, namespaceLabel); err != nil {
-		return nil, client.IgnoreNotFound(err)
+// handleDeletion handles the process of nsl deletion.
+func (r *NamespaceLabelReconciler) handleDeletion(
+	ctx context.Context, namespaceLabel *danaiov1alpha1.NamespaceLabel, ns *corev1.Namespace) error {
+	logger := log.FromContext(ctx)
+
+	if err := r.removeLabelsFromNamespace(ctx, namespaceLabel, ns); err != nil {
+		logger.Error(err, "Failed to remove labels from Namespace", "Namespace", ns.Name)
+		return err
 	}
-	return namespaceLabel, nil
+
+	if err := r.removeFinalizer(ctx, namespaceLabel); err != nil {
+		logger.Error(err, "Failed to remove finalizer", "NamespaceLabel", namespaceLabel.Name)
+		return err
+	}
+
+	logger.Info("Deletion handled successfully", "NamespaceLabel", namespaceLabel.Name)
+	return nil
 }
 
-// listNamespaceLabelsInNamespace fetches All NamespaceLabels in the Namespace
-func (r *NamespaceLabelReconciler) listNamespaceLabelsInNamespace(ctx context.Context, req ctrl.Request) (*danaiov1alpha1.NamespaceLabelList, error) {
-	existingNamespaceLabels := &danaiov1alpha1.NamespaceLabelList{}
-	if err := r.List(ctx, existingNamespaceLabels, client.InNamespace(req.Namespace)); err != nil {
-		return nil, client.IgnoreNotFound(err)
+// removeFinalizer removes the finalizer from the nsl during the deletion process.
+func (r *NamespaceLabelReconciler) removeFinalizer(
+	ctx context.Context, namespaceLabel *danaiov1alpha1.NamespaceLabel) error {
+	logger := log.FromContext(ctx)
+
+	controllerutil.RemoveFinalizer(namespaceLabel, internal.FinalizerName)
+
+	if err := r.Update(ctx, namespaceLabel); err != nil {
+		logger.Error(err, "Failed to update NamespaceLabel to remove finalizer")
+		return err
 	}
 
-	return existingNamespaceLabels, nil
-}
-
-// fetchNamespace fetches the current Namespace details
-func (r *NamespaceLabelReconciler) fetchNamespace(ctx context.Context, req ctrl.Request) (*corev1.Namespace, error) {
-	ns := &corev1.Namespace{}
-	namespaceName := client.ObjectKey{Name: req.Namespace}
-	if err := r.Get(ctx, namespaceName, ns); err != nil {
-		return nil, client.IgnoreNotFound(err)
-	}
-	return ns, nil
+	logger.Info("Finalizer removed successfully", "NamespaceLabel", namespaceLabel.Name)
+	return nil
 }

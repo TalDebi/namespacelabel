@@ -7,8 +7,8 @@ import (
 	danaiov1alpha1 "github.com/TalDebi/namespacelabel/api/v1alpha1"
 )
 
-// updateConditionsStatus updates the conditions variable
-func (r *NamespaceLabelReconciler) updateConditionsStatus(ctx context.Context, namespaceLabel *danaiov1alpha1.NamespaceLabel, conditionType string, status metav1.ConditionStatus, reason, message string) error {
+// updateConditions updates the conditions.
+func (r *NamespaceLabelReconciler) updateConditions(ctx context.Context, namespaceLabel *danaiov1alpha1.NamespaceLabel, conditionType string, status metav1.ConditionStatus, reason, message string) error {
 	condition := metav1.Condition{
 		Type:               conditionType,
 		Status:             status,
@@ -17,10 +17,8 @@ func (r *NamespaceLabelReconciler) updateConditionsStatus(ctx context.Context, n
 		Message:            message,
 	}
 
-	// Update or append condition
 	namespaceLabel.Status.Conditions = updateNewCondition(namespaceLabel.Status.Conditions, condition)
 
-	// Update status
 	if err := r.Status().Update(ctx, namespaceLabel); err != nil {
 		r.Log.Error(err, "Failed to update NamespaceLabel status", "NamespaceLabel", namespaceLabel.Name)
 		return err
@@ -29,7 +27,7 @@ func (r *NamespaceLabelReconciler) updateConditionsStatus(ctx context.Context, n
 	return nil
 }
 
-// updateNewCondition appends a new condition or updates an existing one in the slice of conditions
+// updateNewCondition appends a new condition or updates an existing one in the slice of conditions.
 func updateNewCondition(conditions []metav1.Condition, newCondition metav1.Condition) []metav1.Condition {
 	for index := range conditions {
 		if conditions[index].Type == newCondition.Type {

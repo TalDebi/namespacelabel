@@ -75,7 +75,8 @@ var _ = Describe("NamespaceLabel Webhook", func() {
 		})
 
 		It("Should reject creation if a management label is used", func() {
-			obj.Spec.Labels[internal.ManagementLabelPrefix] = "test"
+			obj.Spec.Labels = make(map[string]string)
+			obj.Spec.Labels[internal.ManagementLabelPrefixes[0]] = "test"
 			_, err := validator.ValidateCreate(ctx, obj)
 			Expect(err).To(HaveOccurred())
 		})
@@ -84,6 +85,7 @@ var _ = Describe("NamespaceLabel Webhook", func() {
 	Context("When updating NamespaceLabel", func() {
 		It("Should allow updating when labels are valid", func() {
 			newObj := obj.DeepCopy()
+			newObj.Spec.Labels = make(map[string]string)
 			newObj.Spec.Labels = testLabels
 			_, err := validator.ValidateUpdate(ctx, obj, newObj)
 			Expect(err).NotTo(HaveOccurred())
@@ -91,7 +93,8 @@ var _ = Describe("NamespaceLabel Webhook", func() {
 
 		It("Should reject update if it introduces a management label", func() {
 			existingObj := obj.DeepCopy()
-			obj.Spec.Labels[internal.ManagementLabelPrefix] = "test"
+			existingObj.Spec.Labels = make(map[string]string)
+			obj.Spec.Labels[internal.ManagementLabelPrefixes[0]] = "test"
 			_, err := validator.ValidateUpdate(ctx, existingObj, obj)
 			Expect(err).To(HaveOccurred())
 		})

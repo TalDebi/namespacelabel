@@ -20,6 +20,8 @@ import (
 	"context"
 	"crypto/tls"
 	"fmt"
+	"github.com/TalDebi/namespacelabel/internal"
+	"github.com/spf13/pflag"
 	"net"
 	"path/filepath"
 	"runtime"
@@ -140,6 +142,10 @@ var _ = BeforeSuite(func() {
 
 		return conn.Close()
 	}).Should(Succeed())
+
+	pflag.StringSliceVar(&internal.ManagementLabelPrefixes, "management-label-prefixes", []string{"kubernetes.io"}, "Management label prefixes")
+
+	pflag.Parse()
 })
 
 var _ = AfterSuite(func() {

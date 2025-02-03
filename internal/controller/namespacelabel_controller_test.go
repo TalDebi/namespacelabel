@@ -29,7 +29,7 @@ import (
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
-	danav1alpha1 "github.com/TalDebi/namespacelabel/api/v1alpha1"
+	danaiov1alpha1 "github.com/TalDebi/namespacelabel/api/v1alpha1"
 )
 
 var _ = Describe("NamespaceLabel Controller", func() {
@@ -59,12 +59,12 @@ var _ = Describe("NamespaceLabel Controller", func() {
 			Expect(k8sClient.Create(ctx, ns)).To(Succeed())
 
 			By("creating the custom resource for the Kind NamespaceLabel")
-			namespacelabel := &danav1alpha1.NamespaceLabel{
+			namespacelabel := &danaiov1alpha1.NamespaceLabel{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      resourceName,
 					Namespace: testNamespace,
 				},
-				Spec: danav1alpha1.NamespaceLabelSpec{
+				Spec: danaiov1alpha1.NamespaceLabelSpec{
 					Labels: testLabels,
 				},
 			}
@@ -84,7 +84,7 @@ var _ = Describe("NamespaceLabel Controller", func() {
 
 		AfterEach(func() {
 			By("Cleanup the specific resource instance NamespaceLabel")
-			resource := &danav1alpha1.NamespaceLabel{}
+			resource := &danaiov1alpha1.NamespaceLabel{}
 			err := k8sClient.Get(ctx, typeNamespacedName, resource)
 
 			if err == nil || !errors.IsNotFound(err) {
@@ -108,7 +108,7 @@ var _ = Describe("NamespaceLabel Controller", func() {
 			}
 
 			By("Verifying that NamespaceLabelStatus is updated")
-			updatedNamespaceLabel := &danav1alpha1.NamespaceLabel{}
+			updatedNamespaceLabel := &danaiov1alpha1.NamespaceLabel{}
 			Expect(k8sClient.Get(ctx, typeNamespacedName, updatedNamespaceLabel)).To(Succeed())
 
 			By("Checking if the status conditions are updated")
@@ -121,7 +121,7 @@ var _ = Describe("NamespaceLabel Controller", func() {
 		It("should update labels in an existing NamespaceLabel", func() {
 			By("Updating the NamespaceLabel labels")
 			updatedLabels := map[string]string{"env": "prod", "owner": "admin"}
-			existingNamespaceLabel := &danav1alpha1.NamespaceLabel{}
+			existingNamespaceLabel := &danaiov1alpha1.NamespaceLabel{}
 			Expect(k8sClient.Get(ctx, typeNamespacedName, existingNamespaceLabel)).To(Succeed())
 
 			existingNamespaceLabel.Spec.Labels = updatedLabels
@@ -148,7 +148,7 @@ var _ = Describe("NamespaceLabel Controller", func() {
 
 		It("should remove labels when NamespaceLabel is deleted", func() {
 			By("Deleting the NamespaceLabel resource")
-			existingNamespaceLabel := &danav1alpha1.NamespaceLabel{}
+			existingNamespaceLabel := &danaiov1alpha1.NamespaceLabel{}
 			Expect(k8sClient.Get(ctx, typeNamespacedName, existingNamespaceLabel)).To(Succeed())
 			Expect(k8sClient.Delete(ctx, existingNamespaceLabel)).To(Succeed())
 
