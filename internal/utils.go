@@ -2,12 +2,13 @@ package internal
 
 import (
 	"context"
+	"strings"
+
 	danaiov1alpha1 "github.com/TalDebi/namespacelabel/api/v1alpha1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/log"
-	"strings"
 )
 
 // IsManagementLabel check if label is a management label.

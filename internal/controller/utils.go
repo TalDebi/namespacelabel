@@ -2,6 +2,7 @@ package controller
 
 import (
 	"context"
+
 	danaiov1alpha1 "github.com/TalDebi/namespacelabel/api/v1alpha1"
 	"github.com/TalDebi/namespacelabel/internal"
 	corev1 "k8s.io/api/core/v1"

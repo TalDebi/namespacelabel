@@ -2,6 +2,7 @@ package controller
 
 import (
 	"context"
+
 	danaiov1alpha1 "github.com/TalDebi/namespacelabel/api/v1alpha1"
 	"github.com/TalDebi/namespacelabel/internal"
 	corev1 "k8s.io/api/core/v1"
@@ -12,11 +13,7 @@ import (
 func (r *NamespaceLabelReconciler) reconcileNamespaceLabels(
 	ctx context.Context, namespaceLabel *danaiov1alpha1.NamespaceLabel, ns *corev1.Namespace) error {
 
-	labelsToAdd, labelsToRemove, err := determineLabelChanges(namespaceLabel, ns)
-
-	if err != nil {
-		return err
-	}
+	labelsToAdd, labelsToRemove := determineLabelChanges(namespaceLabel, ns)
 
 	if err := r.applyLabelsChanges(ctx, ns, labelsToAdd, labelsToRemove); err != nil {
 		return err
@@ -26,15 +23,12 @@ func (r *NamespaceLabelReconciler) reconcileNamespaceLabels(
 }
 
 // determineLabelChanges determines labels to add, remove or update.
-func determineLabelChanges(namespaceLabel *danaiov1alpha1.NamespaceLabel, ns *corev1.Namespace) (map[string]string, map[string]struct{}, error) {
-	labelsToAdd := make(map[string]string)
-	labelsToRemove := make(map[string]struct{})
+func determineLabelChanges(namespaceLabel *danaiov1alpha1.NamespaceLabel, ns *corev1.Namespace) (map[string]string, map[string]struct{}) {
+	labelsToAdd := collectLabelsToAddOrUpdate(namespaceLabel)
 
-	labelsToAdd = collectLabelsToAddOrUpdate(namespaceLabel)
+	labelsToRemove := collectLabelsToRemove(ns.Labels, labelsToAdd)
 
-	labelsToRemove = collectLabelsToRemove(ns.Labels, labelsToAdd)
-
-	return labelsToAdd, labelsToRemove, nil
+	return labelsToAdd, labelsToRemove
 }
 
 // collectLabelsToAddOrUpdate collects the labels from the namespaceLabel and returns a map of labels to add or update.
@@ -52,11 +46,9 @@ func collectLabelsToAddOrUpdate(namespaceLabel *danaiov1alpha1.NamespaceLabel) m
 func collectLabelsToRemove(nsLabels map[string]string, labelsToAdd map[string]string) map[string]struct{} {
 	labelsToRemove := make(map[string]struct{})
 
-	if nsLabels != nil {
-		for key := range nsLabels {
-			if _, exists := labelsToAdd[key]; !exists && !internal.IsManagementLabel(key) {
-				labelsToRemove[key] = struct{}{}
-			}
+	for key := range nsLabels {
+		if _, exists := labelsToAdd[key]; !exists && !internal.IsManagementLabel(key) {
+			labelsToRemove[key] = struct{}{}
 		}
 	}
 

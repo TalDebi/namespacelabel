@@ -15,9 +15,31 @@ jobs:
       - name: Setup Go
         uses: actions/setup-go@v5
         with:
-          go-version: '~1.22'
+          go-version: '1.21'
+
+      - name: Install etcd
+        run: |
+          ETCD_VERSION=v3.5.9
+          curl -L https://github.com/etcd-io/etcd/releases/download/${ETCD_VERSION}/etcd-${ETCD_VERSION}-linux-amd64.tar.gz -o etcd.tar.gz
+          tar xzvf etcd.tar.gz
+          sudo mv etcd-${ETCD_VERSION}-linux-amd64/etcd /usr/local/bin/
+          sudo mv etcd-${ETCD_VERSION}-linux-amd64/etcdctl /usr/local/bin/
+          etcd --version
+
+      - name: Install Kubernetes binaries (kube-apiserver, etcd, kubectl)
+        run: |
+          mkdir -p /tmp/kubebuilder
+          curl -L https://storage.googleapis.com/kubebuilder-tools/kubebuilder-tools-1.21.2-linux-amd64.tar.gz | tar -xz -C /tmp/kubebuilder
+          echo "/tmp/kubebuilder/bin" >> $GITHUB_PATH
+          echo "KUBEBUILDER_ASSETS=/tmp/kubebuilder/bin" >> $GITHUB_ENV
+          # Install kube-apiserver
+          curl -LO https://storage.googleapis.com/kubernetes-release/release/v1.21.0/bin/linux/amd64/kube-apiserver
+          chmod +x kube-apiserver
+          sudo mv kube-apiserver /usr/local/bin/
+          kube-apiserver --version
+
+      - name: Install Dependencies
+        run: go mod tidy && go mod download
 
       - name: Running Tests
-        run: |
-          go mod tidy
-          make test
+        run: make test

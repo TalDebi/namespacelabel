@@ -18,6 +18,8 @@ package controller
 
 import (
 	"context"
+	"fmt"
+
 	danaiov1alpha1 "github.com/TalDebi/namespacelabel/api/v1alpha1"
 	"github.com/go-logr/logr"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -90,11 +92,14 @@ func (r *NamespaceLabelReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 	logger.Info("Creating nsl")
 
 	if err := r.reconcileNamespaceLabels(ctx, namespaceLabel, ns); err != nil {
-		r.updateConditions(ctx, namespaceLabel, "UpdateLabelsFailed", metav1.ConditionFalse, "UpdateError", err.Error())
+		_ = r.updateConditions(ctx, namespaceLabel, "UpdateLabelsFailed", metav1.ConditionFalse, "UpdateError", err.Error())
 		return ctrl.Result{}, err
 	}
 
-	r.updateConditions(ctx, namespaceLabel, "LabelsApplied", metav1.ConditionTrue, "Success", "Namespace labels have been successfully updated")
+	if err := r.updateConditions(ctx, namespaceLabel, "LabelsApplied", metav1.ConditionTrue, "Success", "Namespace labels have been successfully updated"); err != nil {
+		return ctrl.Result{}, fmt.Errorf("failed to update conditions: %w", err)
+	}
+
 	logger.Info("nsl Created")
 
 	return ctrl.Result{}, nil

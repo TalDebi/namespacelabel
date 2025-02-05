@@ -19,13 +19,14 @@ package v1alpha1
 import (
 	"context"
 	"fmt"
+	"time"
+
 	"github.com/TalDebi/namespacelabel/internal"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
-	"time"
 
 	danav1alpha1 "github.com/TalDebi/namespacelabel/api/v1alpha1"
 )
